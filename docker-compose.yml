@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  postgres-olist:
+    image: postgres:16
+    container_name: postgres-olist
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: NovaSenhaMuitoForte123
+      POSTGRES_DB: olist_db
+    ports:
+      - "5555:5432"
+    volumes:
+      - postgres_olist_data:/var/lib/postgresql/data
+      - "C:/Users/aland/OneDrive/Documentos/OlistDAProject/files/olist:/data/csv"
+      - "C:/Users/aland/OneDrive/Documentos/OlistDAProject/scripts:/docker-entrypoint-initdb.d"
+
+volumes:
+  postgres_olist_data:
