@@ -14,6 +14,13 @@ Construir uma base analitica organizada para estudos de BI e analytics, com foco
 - padronizacao e qualidade de dados na camada Silver
 - modelagem dimensional na camada Gold
 
+## Fonte dos dados
+
+Os dados publicos utilizados neste projeto estao disponiveis no Kaggle:
+
+- Brazilian E-Commerce Public Dataset by Olist: https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
+
+
 ## Arquitetura de dados
 
 - Bronze (`schema bronze`): dados raw, proximos da origem (majoritariamente `TEXT`)
