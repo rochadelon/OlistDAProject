@@ -4,14 +4,14 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-F2C94C)
 
-Projeto de Engenharia de Dados com PostgreSQL e arquitetura em camadas (Bronze, Silver, Gold) usando os dados publicos da Olist.
+Projeto de Engenharia de Dados com PostgreSQL e arquitetura em camadas (Bronze, Silver e Gold), usando dados publicos da Olist.
 
 ## Objetivo
 
 Construir uma base analitica organizada para estudos de BI e analytics, com foco em:
 
 - ingestao dos CSVs originais na camada Bronze
-- padronizacao e qualidade de dados na camada Silver
+- padronizacao, tipagem e qualidade de dados na camada Silver
 - modelagem dimensional na camada Gold
 
 ## Fonte dos dados
@@ -23,7 +23,7 @@ Os dados publicos utilizados neste projeto estao disponiveis no Kaggle:
 
 ## Arquitetura de dados
 
-- Bronze (`schema bronze`): dados raw, proximos da origem (majoritariamente `TEXT`)
+- Bronze (`schema bronze`): dados brutos, proximos da origem (majoritariamente `TEXT`)
 - Silver (`schema silver`): dados limpos, tipados e deduplicados
 - Gold (`schema gold`): dimensoes e fatos para analise
 
@@ -32,7 +32,7 @@ Fluxo resumido:
 1. CSVs em `files/olist`
 2. Carga Bronze via `COPY` com procedure `bronze.proc_load_bronze`
 3. Transformacao Bronze -> Silver via procedure `silver.proc_load_silver`
-4. Estruturas analiticas na Gold via scripts de dimensoes e fatos
+4. Camada Gold com views dimensionais e factuais para consumo analitico
 
 ## Estrutura do repositorio
 
@@ -45,6 +45,7 @@ Fluxo resumido:
 |   `-- olist/
 `-- scripts/
 	|-- 01_schemas.sql
+	|-- 02_init_all_layers.sql
 	|-- bronze_layer/
 	|   |-- ddl_bronze.sql
 	|   `-- proc_load_bronze.sql
@@ -80,7 +81,12 @@ Credenciais atuais em `docker-compose.yml`:
 
 ### 2) Entender o que roda automaticamente
 
-Os scripts em `scripts/` estao montados em `/docker-entrypoint-initdb.d` e sao executados no primeiro bootstrap do banco (quando o volume ainda esta vazio).
+No primeiro bootstrap (volume vazio), o Postgres executa automaticamente os arquivos SQL da raiz de `/docker-entrypoint-initdb.d`:
+
+- `01_schemas.sql`
+- `02_init_all_layers.sql`
+
+O arquivo `02_init_all_layers.sql` encadeia a execucao de Bronze, Silver e Gold na ordem correta.
 
 ### 3) Reprocessar cargas manualmente (quando necessario)
 
@@ -91,9 +97,9 @@ CALL bronze.proc_load_bronze(TRUE);
 CALL silver.proc_load_silver(TRUE);
 ```
 
-### 4) Criar objetos Gold
+### 4) Recriar objetos Gold
 
-Se ainda nao tiver executado os scripts da Gold, rode manualmente:
+Os objetos da Gold sao **views** e podem ser recriados manualmente com:
 
 ```sql
 \i /docker-entrypoint-initdb.d/golden_layer/goldem_dim.sql
@@ -117,11 +123,25 @@ UNION ALL
 SELECT 'bronze.olist_geolocation', COUNT(*) FROM bronze.olist_geolocation
 UNION ALL
 SELECT 'silver.olist_geolocation', COUNT(*) FROM silver.olist_geolocation;
+
+-- Validar views da Gold (se necessario, desative paralelismo na sessao)
+SET max_parallel_workers_per_gather = 0;
+
+SELECT 'gold.dim_customer' AS view_name, COUNT(*) AS linhas FROM gold.dim_customer
+UNION ALL
+SELECT 'gold.dim_date', COUNT(*) FROM gold.dim_date
+UNION ALL
+SELECT 'gold.fact_orders', COUNT(*) FROM gold.fact_orders
+UNION ALL
+SELECT 'gold.fact_order_items', COUNT(*) FROM gold.fact_order_items;
+
+-- Listar views da camada Gold
+\dv gold.*
 ```
 
 ## Documentacao
 
-- Catalogo de dados Bronze: `docs/data_catalog.md`
+- Catalogo de dados (Bronze, Silver e Gold): `docs/data_catalog.md`
 - Fluxo de dados: `docs/data_flow_diagram.md`
 - Documentacao Bronze: `docs/doc_bronze.md`
 - Regras Silver: `docs/doc_silver_rules.md`
@@ -132,11 +152,11 @@ SELECT 'silver.olist_geolocation', COUNT(*) FROM silver.olist_geolocation;
 - A carga Bronze usa caminhos de arquivos no container (`/data/csv/...`).
 - Em execucoes repetidas, prefira chamar procedures com `p_truncate = TRUE` para evitar duplicidades.
 - A tabela `silver.olist_geolocation` tende a reduzir bastante o volume por regra de deduplicacao.
-- Os nomes dos scripts Gold no repositorio estao como `goldem_dim.sql` e `goldem_facts.sql`.
+- Os scripts da Gold estao nomeados como `goldem_dim.sql` e `goldem_facts.sql` no repositorio.
 
-## Proximos passos 
+## Proximos passos
 
-- [ ] adicionar script de carga da Gold com `INSERT INTO ... SELECT` a partir da Silver
-- [ ] criar views de consumo para BI
-- [ ] adicionar testes de qualidade (null checks, duplicidade, ranges)
+- [X] adicionar script de inicializacao completa por camadas (`scripts/02_init_all_layers.sql`)
+- [X] criar views de consumo para BI
+- [ ] expandir testes de qualidade automatizados (null checks, duplicidade, ranges)
 - [ ] automatizar pipeline com CI/CD

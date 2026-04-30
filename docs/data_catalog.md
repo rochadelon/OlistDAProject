@@ -1,29 +1,39 @@
 
 # Olist Data Catalog
 
-Este documento descreve os datasets do projeto (camada **BRONZE**), incluindo metadados e descrições de campos.
+Este documento descreve os datasets do projeto nas camadas **BRONZE**, **SILVER** e **GOLD**, com inventário e principais metadados.
 
 ## Visão geral
 
 **Fonte de dados (arquivos):** `files/olist/*.csv`
 
+**Origem pública do dataset:** https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
+
 **Ingestão (container):** os CSVs são montados em `/data/csv` (ver `docker-compose.yml`) e carregados via `COPY`.
 
-**Camada:** BRONZE (raw)
+**Schemas por camada:**
 
-**Schema:** `bronze`
+- `bronze`: ingestão raw
+- `silver`: limpeza, tipagem e deduplicação
+- `gold`: consumo analítico (dimensões e fatos em views)
 
-**DDL:** `scripts/ddl_bronze.sql`
+**Scripts principais:**
 
-**Carga:** `scripts/proc_load_bronze.sql` (procedure `bronze.proc_load_bronze(p_truncate BOOLEAN)`)
+- Schemas: `scripts/01_schemas.sql`
+- Bronze DDL: `scripts/bronze_layer/ddl_bronze.sql`
+- Bronze carga: `scripts/bronze_layer/proc_load_bronze.sql`
+- Silver DDL: `scripts/silver_layer/ddl_silver.sql`
+- Silver carga: `scripts/silver_layer/proc_load_silver.sql`
+- Gold dimensões: `scripts/golden_layer/goldem_dim.sql`
+- Gold fatos: `scripts/golden_layer/goldem_facts.sql`
 
 **Formato dos arquivos:** CSV com header e delimitador `,`.
 
-**Observação sobre tipos:** na BRONZE, todos os campos são armazenados como `TEXT`. Conversões (datas/números) devem ser feitas em camadas posteriores.
+**Observação sobre tipos:** na BRONZE, os campos são carregados como `TEXT`; as conversões (datas/números) acontecem na SILVER.
 
-## Inventário (tabelas)
+## Inventário BRONZE (tabelas)
 
-Contagens validadas em 2026-04-24 (após execução de `CALL bronze.proc_load_bronze(TRUE)`):
+Contagens validadas em 2026-04-26:
 
 | Tabela (bronze) | Arquivo de origem | Linhas |
 |---|---|---:|
@@ -36,6 +46,40 @@ Contagens validadas em 2026-04-24 (após execução de `CALL bronze.proc_load_br
 | `olist_products` | `olist_products_dataset.csv` | 32.951 |
 | `olist_sellers` | `olist_sellers_dataset.csv` | 3.095 |
 | `olist_product_category_name_translation` | `product_category_name_translation.csv` | 71 |
+
+## Inventário SILVER (tabelas)
+
+Contagens validadas em 2026-04-26:
+
+| Tabela (silver) | Linhas |
+|---|---:|
+| `olist_customers` | 99.441 |
+| `olist_geolocation` | 738.332 |
+| `olist_order_items` | 112.650 |
+| `olist_order_payments` | 103.886 |
+| `olist_order_reviews` | 98.410 |
+| `olist_orders` | 99.441 |
+| `olist_products` | 32.951 |
+| `olist_sellers` | 3.095 |
+| `olist_product_category_name_translation` | 71 |
+
+## Inventário GOLD (views)
+
+Contagens validadas em 2026-04-26:
+
+| View (gold) | Linhas |
+|---|---:|
+| `dim_date` | 751 |
+| `dim_customer` | 96.096 |
+| `dim_seller` | 3.095 |
+| `dim_product_category` | 73 |
+| `dim_order_status` | 8 |
+| `dim_payment_type` | 5 |
+| `dim_geolocation` | 19.015 |
+| `fact_order_items` | 112.650 |
+| `fact_orders` | 99.441 |
+| `fact_payments` | 103.886 |
+| `fact_reviews` | 98.410 |
 
 ---
 
